@@ -106,7 +106,7 @@ public class Topic_ItemRecmd extends LDA_Variational {
             do{
                 for(int k = 0; k < number_of_topics; k++){
                     moment = Math.exp(d.m_mu[k] + 0.5 * d.m_Sigma[k]);
-                    m_muG[k] = -m_rho * (d.m_mu[k] + Utils.dotProduct(i.m_eta, u.m_nuP[k])/Utils.sumOfArray(i.m_eta))
+                    m_muG[k] = -m_rho * (d.m_mu[k] - Utils.dotProduct(i.m_eta, u.m_nuP[k])/Utils.sumOfArray(i.m_eta))
                             + Utils.sumOfColumn(d.m_phi,k) - zeta_stat * moment;
                     m_muH[k] = -m_rho - zeta_stat * moment;
                 }
@@ -127,7 +127,6 @@ public class Topic_ItemRecmd extends LDA_Variational {
                 double eta_0 = Utils.sumOfArray(i.m_eta);
                 RealMatrix eta_stat_i = MatrixUtils.createRealDiagonalMatrix(i.m_eta).add(eta_vec.multiply(eta_vec.transpose()));
                 eta_stat_sigma.add(eta_stat_i.scalarMultiply(m_rho/(eta_0 * (eta_0 + 1.0))));
-                eta_stat_nu.add(eta_vec.scalarMultiply(d.m_mu[k] / eta_0));
             }
             eta_stat_sigma = new LUDecomposition(eta_stat_sigma).getSolver().getInverse();
             for(int k = 0; k < number_of_topics; k++){
@@ -135,12 +134,17 @@ public class Topic_ItemRecmd extends LDA_Variational {
             }
 
             for(int k = 0; k < number_of_topics; k++){
+                for (int item_i = 0; item_i < number_of_items; item_i++){
+                    RealMatrix eta_vec = MatrixUtils.createColumnRealMatrix(i.m_eta);
+                    double eta_0 = Utils.sumOfArray(i.m_eta);
+                    eta_stat_nu.add(eta_vec.scalarMultiply(d.m_mu[k] / eta_0));
+                }
                 u.m_nuP[k] = eta_stat_sigma.multiply(eta_stat_nu).scalarMultiply(m_rho).getColumn(0);
             }
 
             //variational inference for p(\gamma|\eta) for each item
             for(int k = 0; k < number_of_topics; k++){
-                
+
             }
 
             if(m_converge > 0){
