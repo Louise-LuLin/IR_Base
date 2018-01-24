@@ -41,6 +41,10 @@ public class _User {
 	
 	double m_adaPos = 0;
 	double m_testPos = 0;
+
+	/** added by Lu Lin for ETBIR**/
+	public double[][] m_nuP;
+	public double[][][] m_SigmaP;
 	
 	/**added by Lin for cf.**/
 	private final HashMap<String, Integer> m_itemIDRating = new HashMap<String, Integer>(); //This hashmap contains all the items the user purchased and corresponding ratings.

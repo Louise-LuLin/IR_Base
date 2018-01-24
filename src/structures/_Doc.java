@@ -85,6 +85,14 @@ public class _Doc extends _DocBase implements Comparable<_Doc> {
 	// structure only used by variational inference
 	public double[][] m_phi; // p(z|w, \phi)	
 	Random m_rand;
+
+	/**
+	 * created by Lu Lin
+	 * structure only used by variational inference for Topic_ItemRecmd
+	 */
+	public double[] m_mu; // mean vector \mu in variational inference p(\theta|\mu,\Sigma)
+	public double[] m_Sigma; // diagonal covariance matrix \Sigma in variational inference p(\theta|\mu,\Sigma)
+	public double m_zeta; //Taylor expansion parameter \zeta related to p(\theta|\mu,\Sigma)
 	
 	//Constructor.
 	public _Doc (int ID, String source, int ylabel){
