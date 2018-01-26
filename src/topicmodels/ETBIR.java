@@ -318,7 +318,7 @@ public class ETBIR{
             System.out.print("! FAIL to load json file...");
         }
 
-        
+
     }
 
     public void readData(String fileName){
