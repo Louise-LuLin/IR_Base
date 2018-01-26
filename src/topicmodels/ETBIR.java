@@ -1,23 +1,21 @@
 package topicmodels;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.lang.reflect.Array;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
 import LBFGS.LBFGS;
 import LBFGS.LBFGS.ExceptionWithIflag;
+import Analyzer.DocAnalyzer;
+import json.JSONArray;
+import json.JSONObject;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
-import structures._Corpus;
-import structures._Review;
-import structures._User;
-import structures._Item;
-import structures._SparseFeature;
+import structures.*;
 import utils.Utils;
 
 /**
@@ -305,6 +303,24 @@ public class ETBIR{
 
     }
 
+    public void processData(String fileName){
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), "UTF-8"));
+            StringBuffer buffer = new StringBuffer(1024);
+            String line;
+
+            while((line=reader.readLine())!=null) {
+                buffer.append(line);
+            }
+            reader.close();
+            JSONArray jarry = new JSONArray(buffer.toString());
+        } catch (Exception e) {
+            System.out.print("! FAIL to load json file...");
+        }
+
+        
+    }
+
     public void readData(String fileName){
 
     }
@@ -317,7 +333,7 @@ public class ETBIR{
         String outFileName = "output_ETBIR.txt";
         PrintStream out = new PrintStream(new FileOutputStream(outFileName));
 
-        String dataFileName = "input/data.dat";
+        String dataFileName = "../myData/review.json";
         String vocFileName = "input/vocab.dat";
 
         int topic_number = 30;
@@ -330,8 +346,9 @@ public class ETBIR{
         double emConverge = 1e-3;
 
         ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge, topic_number, vocab_size);
-        etbirModel.readData(dataFileName);
-        etbirModel.readVocabulary(vocFileName);
-        etbirModel.EM();
+        etbirModel.processData(dataFileName);
+//        etbirModel.readData(dataFileName);
+//        etbirModel.readVocabulary(vocFileName);
+//        etbirModel.EM();
     }
 }
