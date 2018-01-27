@@ -304,6 +304,8 @@ public class ETBIR{
     }
 
     public void processData(String fileName){
+        JSONArray jarray = null;
+
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), "UTF-8"));
             StringBuffer buffer = new StringBuffer(1024);
@@ -318,7 +320,9 @@ public class ETBIR{
             System.out.print("! FAIL to load json file...");
         }
 
-
+        for(int i = 0; i < jarray.length(); i++){
+            
+        }
     }
 
     public void readData(String fileName){
