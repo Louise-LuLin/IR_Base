@@ -321,7 +321,7 @@ public class ETBIR{
         }
 
         for(int i = 0; i < jarray.length(); i++){
-            
+
         }
     }
 
