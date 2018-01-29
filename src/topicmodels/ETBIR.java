@@ -6,17 +6,22 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 
 import LBFGS.LBFGS;
 import LBFGS.LBFGS.ExceptionWithIflag;
 import Analyzer.DocAnalyzer;
 import json.JSONArray;
+import json.JSONException;
 import json.JSONObject;
+import org.apache.commons.math3.linear.JacobiPreconditioner;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import structures.*;
 import utils.Utils;
+
+import javax.rmi.CORBA.Util;
 
 /**
  * @author Lu Lin
@@ -33,6 +38,10 @@ public class ETBIR{
     protected int number_of_topics;
     protected int number_of_users;
     protected int number_of_items;
+
+    protected HashMap<String, Integer> userIDMap;
+    protected HashMap<String, Integer> itemIDMap;
+    protected int[][] userItemBipartite;
 
     public _User[] us;
     public _Item[] is;
@@ -64,7 +73,7 @@ public class ETBIR{
 
     }
 
-    public double calc_E_step(_Review d, _User u, _Item i) {
+    public void calc_E_step(_Review d, _User u, _Item i) {
         double last = 0.0;
         if (m_varConverge > 0) {
             last = calc_log_likelihood(d, us, is);
@@ -161,7 +170,7 @@ public class ETBIR{
         int[] iflag = {0}, iprint = {-1,3};
         double fValue = 0.0;
         int N = d.getDocInferLength();
-        protected double[] m_SigmaG = new double[number_of_topics]; // gradient for Sigma
+        double[] m_SigmaG = new double[number_of_topics]; // gradient for Sigma
         double[] sigma_diag = new double[number_of_topics];
         Arrays.fill(sigma_diag, 0.0);
 
@@ -296,15 +305,17 @@ public class ETBIR{
     }
 
     protected double calc_log_likelihood(_Review d, _User[] us, _Item[] is) {
+        double log_likelihood = 0;
 
+        return log_likelihood;
     }
 
     protected void EM(){
 
     }
 
-    public void processData(String fileName){
-        JSONArray jarray = null;
+    public JSONArray loadJson(String fileName){
+        JSONArray jarry = new JSONArray();
 
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), "UTF-8"));
@@ -312,16 +323,146 @@ public class ETBIR{
             String line;
 
             while((line=reader.readLine())!=null) {
-                buffer.append(line);
+                jarry.put(new JSONObject(line.toString()));
             }
             reader.close();
-            JSONArray jarry = new JSONArray(buffer.toString());
+            return jarry;
         } catch (Exception e) {
             System.out.print("! FAIL to load json file...");
+            return null;
+        }
+    }
+
+    //load data from json file to model, object = {user, item, review}
+    public void loadData(String fileName, int threshold, String object){
+
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), "UTF-8"));
+            StringBuffer buffer = new StringBuffer(1024);
+            String line;
+
+            int userNum = 0, itemNum = 0;
+            while((line=reader.readLine())!=null) {
+                JSONObject obj = new JSONObject(line.toString());
+
+                if(object == "user" && obj.has("user_id")){
+                    String userID = obj.getString("user_id");
+                    int review_count = obj.getInt("review_count");
+                    if (review_count >= threshold) {
+                        userIDMap.put(userID, userNum++);
+                    }
+                }
+
+                if(object == "item" && obj.has("business_id")){
+                    String itemID = obj.getString("business_id");
+                    int review_count = obj.getInt("review_count");
+                    if(review_count >= threshold){
+                        itemIDMap.put(itemID, itemNum++);
+                    }
+                }
+
+                if(object == "review" && obj.has("review_id")){
+                    String reviewID = obj.getString("review_id");
+                    String userID = obj.getString("user_id");
+                    String itemID = obj.getString("business_id");
+                    if(userIDMap.containsKey(userID) && itemIDMap.containsKey(itemID)){
+                        userItemBipartite[userIDMap.get(userID)][itemIDMap.get(itemID)] += 1;
+                    }
+                }
+            }
+            reader.close();
+        } catch (Exception e) {
+            System.out.print("! FAIL to load " + object + " json file...");
+        }
+    }
+
+    public void iterFiltering(String userFileName, String itemFileName, String reviewFileName,
+                              int userThreshold, int itemThreshold, int filterIterNum){
+
+        //load user and item data with review_count no less than threshold
+        userIDMap = new HashMap<String, Integer>();
+        loadData(userFileName, userThreshold, "user");
+        itemIDMap = new HashMap<String, Integer>();
+        loadData(itemFileName, itemThreshold, "item");
+
+        int userNum = userIDMap.size();
+        int itemNum = itemIDMap.size();
+        userItemBipartite = new int[userNum][itemNum];
+        for(int[] row:userItemBipartite){
+            Arrays.fill(row, 0);
+        }
+        loadData(reviewFileName, 1, "review");
+        System.out.println("Loading data finished: " + userIDMap.size()
+                + " users; " + itemIDMap.size() + " items.");
+
+        //iteratively filter user/item with too few reviews to get a dense bipartite
+        int i;
+        for(i = 0; i < filterIterNum; i++){
+            //delete user with too few reviews by setting all its row elements to be 0
+            for(int u_id = 0; u_id < userNum;u_id++){
+                if(Utils.sumOfRow(userItemBipartite, u_id) < userThreshold){
+                    Arrays.fill(userItemBipartite[u_id], 0);
+                }
+            }
+
+            //delete item with too few reviews by setting all its column elements to be 0
+            for(int i_id = 0; i_id < itemNum; i_id++){
+                if(Utils.sumOfColumn(userItemBipartite, i_id) < itemThreshold){
+                    for(int c = 0; c < userNum; c++){
+                        userItemBipartite[c][i_id] = 0;
+                    }
+                }
+            }
+        }
+
+        System.out.println("Filtering finished: after " + i + " iterations");
+
+        //save dense sub bipartite graph
+        for(int u_id = 0; u_id < userNum;u_id++){
+            if(Utils.sumOfRow(userItemBipartite, u_id) == 0) {
+                userIDMap.values().remove(u_id);
+            }
+        }
+        for(int i_id = 0; i_id < itemNum;i_id++){
+            if(Utils.sumOfColumn(userItemBipartite, i_id) == 0){
+                itemIDMap.values().remove(i_id);
+            }
+        }
+        System.out.println("-- contains: " + userIDMap.size() + " users; " + itemIDMap.size() + " items.");
+    }
+
+    public void saveFilterdData(String fileName){
+        JSONArray jarray = null;
+        JSONArray new_jarray = new JSONArray();
+
+        try {
+            jarray = loadJson(fileName);
+        } catch (Exception e) {
+            System.err.println("! FAIL to load review json file...");//fail to parse a json document
+            return;
         }
 
         for(int i = 0; i < jarray.length(); i++){
-            
+            try{
+                JSONObject obj = jarray.getJSONObject(i);
+
+                if(obj.has("review_id")) {
+                    String userID = obj.getString("user_id");
+                    String itemID = obj.getString("business_id");
+                    if (userIDMap.containsKey(userID) && itemIDMap.containsKey(itemID)) {
+                        new_jarray.put(obj);
+                    }
+                }
+            } catch (JSONException e){
+                System.out.print("! WRONG JSON object...");
+            }
+        }
+
+        try{
+            FileWriter file = new FileWriter(fileName);
+            file.write(new_jarray.toString());
+        }catch (Exception e){
+            System.out.print("! FAIL to save json array to file...");
         }
     }
 
@@ -337,7 +478,14 @@ public class ETBIR{
         String outFileName = "output_ETBIR.txt";
         PrintStream out = new PrintStream(new FileOutputStream(outFileName));
 
-        String dataFileName = "../myData/review.json";
+        String itemFileName = "./myData/business.json";
+        String userFileName = "./myData/user.json";
+        String reviewFileName = "./myData/review.json";
+        String denseFileName = "./myData/denseReview.json";
+        int userMinCount = 20;
+        int itemMinCount = 50;
+        int filtIterNum = 20;
+
         String vocFileName = "input/vocab.dat";
 
         int topic_number = 30;
@@ -350,7 +498,9 @@ public class ETBIR{
         double emConverge = 1e-3;
 
         ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge, topic_number, vocab_size);
-        etbirModel.processData(dataFileName);
+        etbirModel.iterFiltering(userFileName, itemFileName, reviewFileName,
+                userMinCount, itemMinCount, filtIterNum);
+        etbirModel.saveFilterdData(denseFileName);
 //        etbirModel.readData(dataFileName);
 //        etbirModel.readVocabulary(vocFileName);
 //        etbirModel.EM();
