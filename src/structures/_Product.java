@@ -44,6 +44,9 @@ public class _Product {
 	public _Product(String ID) {
 		m_ID = ID;
 	}
+
+	//defined by Lu Lin
+	public double[] m_eta; // variational inference for p(\gamma|\eta)
 	
 	//Constructor.
 	public _Product(JSONObject json) throws NumberFormatException {

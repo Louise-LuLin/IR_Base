@@ -35,6 +35,7 @@ import structures._Doc;
 import structures._Post;
 import structures._Product;
 import structures._Stn;
+import structures._Review;
 import utils.Utils;
 
 /**
@@ -312,7 +313,41 @@ public class DocAnalyzer extends Analyzer {
 			return null;
 		}
 	}
-	
+
+	//defined by Lu Lin for yelp review data
+	public void LoadReviewByItem(String filename){
+	    _Product prod = null;
+	    JSONArray jarray = null;
+	    try{
+	        JSONObject json = LoadJSON(filename);
+	        prod = new _Product(json.getString("ProductID"));
+	        jarray = json.getJSONArray("reviews");
+        }catch (Exception e){
+	        System.err.print("!FAIL to parse a json file...");
+	        return;
+        }
+
+        JSONObject obj;
+        _Doc review;
+        String name, source, productID, userID, category = "";
+        int ylabel;
+        long timestamp = 0;
+        for(int u = 0; u < jarray.length(); u++){
+	        try {
+                obj = jarray.getJSONObject(u);
+                name = obj.getString("review_id");
+                source = obj.getString("text");
+                userID = obj.getString("user_id");
+                productID = obj.getString("business_id");
+                ylabel = obj.getInt("stars");
+                review = new _Doc(m_corpus.getSize(), name, productID, userID, source, ylabel, timestamp);
+                AnalyzeDoc(review);
+            }catch (JSONException e){
+	            System.out.println("!FAIL to parse a json object...");
+            }
+        }
+    }
+
 	//Load a document and analyze it.
 	protected void LoadJsonDoc(String filename) {
 		_Product prod = null;
