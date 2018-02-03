@@ -374,7 +374,7 @@ public class ETBIR{
                             + d.m_mu[k] * Utils.sumOfColumn(d.m_phi, k) - N * zeta_stat * moment;
                 }
                 fValue = -fValue; //LBFGS is about minimization
-                LBFGS.lbfgs(number_of_topics,4, d.m_mu, fValue, m_muG,false, mu_diag, iprint, 1e-6, 1e-32, iflag);
+                LBFGS.lbfgs(number_of_topics,4, d.m_mu, fValue, m_muG,false, mu_diag, iprint, 1e-6, 1e-16, iflag);
             } while (iflag[0] != 0);
         }catch (ExceptionWithIflag e){
             e.printStackTrace();
