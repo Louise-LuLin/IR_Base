@@ -23,6 +23,7 @@ public class ETBIR{
 
     protected int m_varMaxIter;
     protected double m_varConverge;
+    protected double m_varStepSize;
     protected int m_emMaxIter;
     protected double m_emConverge;
 
@@ -36,7 +37,7 @@ public class ETBIR{
     public _Product[] m_items;
     public HashMap<String, Integer> m_itemsIndex;
     public _Corpus m_corpus;
-    public HashMap<int[], Integer> m_reviewIndex;
+    public HashMap<String, Integer> m_reviewIndex;
 
     public double m_rho;
     public double m_sigma;
@@ -59,13 +60,14 @@ public class ETBIR{
     public double[] m_eta_p_Stats;
     public double[] m_eta_mean_Stats;
 
-    public ETBIR(int emMaxIter, double emConverge,  int varMaxIter, double varConverge, //stop criterion
+    public ETBIR(int emMaxIter, double emConverge,  int varMaxIter, double varConverge, double varStepSize, //stop criterion
                            int nTopics, //user pre-defined arguments
                            double dalpha, double dsigma, double drho, double dbeta) {
         this.m_emMaxIter = emMaxIter;
         this.m_emConverge = emConverge;
         this.m_varMaxIter = varMaxIter;
         this.m_varConverge = varConverge;
+        this.m_varStepSize = varStepSize;
 
         this.number_of_topics = nTopics;
 
@@ -81,7 +83,7 @@ public class ETBIR{
         this.m_corpus = corpus;
         m_usersIndex = new HashMap<String, Integer>();
         m_itemsIndex = new HashMap<String, Integer>();
-        m_reviewIndex = new HashMap<int[], Integer>();
+        m_reviewIndex = new HashMap<String, Integer>();
 
         int u_index = 0, i_index = 0;
         for(_Doc d : m_corpus.getCollection()){
@@ -110,15 +112,11 @@ public class ETBIR{
         this.number_of_users = m_users.length;
         this.vocabulary_size = m_corpus.getFeatureSize();
 
-        int d_index = 0;
         for(int d = 0; d < m_corpus.getCollection().size(); d++){
             _Doc doc = m_corpus.getCollection().get(d);
             int uIndex = m_usersIndex.get(doc.getTitle());
             int iIndex = m_itemsIndex.get(doc.getItemID());
-            int dKey[] = {iIndex, uIndex};
-            if(!m_reviewIndex.containsKey(dKey)){
-                m_reviewIndex.put(dKey, d_index++);
-            }
+            m_reviewIndex.put(iIndex + "_" + uIndex, d);
         }
 
         System.out.println("-- vocabulary size: " + vocabulary_size);
@@ -247,7 +245,7 @@ public class ETBIR{
         // update m_eta_mean_stats for updating rho and eta
         for(int i = 0; i < number_of_items; i++) {
             for (int u = 0; u < number_of_users; u++) {
-                int[] dKey = {i, u};
+                String dKey = i + "_" + u;
                 _Doc currentD = m_corpus.getCollection().get(m_reviewIndex.get(dKey));
                 for (int k = 0; k < number_of_topics; k++) {
                     for (int l = 0; l < number_of_topics; l++) {

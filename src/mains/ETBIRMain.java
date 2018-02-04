@@ -36,13 +36,14 @@ public class ETBIRMain {
 
         int varMaxIter = 20;
         double varConverge = 1e-6;
+        double varStepSize = 1e-4;
 
-        int emMaxIter = 1000;
+        int emMaxIter = 20;
         double emConverge = 1e-3;
 
         double alpha = 1.0 + 1e-2, beta = 1.0 + 1e-3, sigma = 1.0, rho = 1.0;
 
-        ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge,
+        ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge, varStepSize,
                 topic_number, alpha, sigma, rho, beta);
         etbirModel.loadCorpus(corpus);
         etbirModel.EM();
