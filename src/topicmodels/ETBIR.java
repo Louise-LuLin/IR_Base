@@ -10,6 +10,7 @@ import LBFGS.LBFGS.ExceptionWithIflag;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import structures.*;
 import utils.Utils;
 
@@ -351,8 +352,11 @@ public class ETBIR{
 
     //variational inference for p(\theta|\mu,\Sigma) for each document: Quasi-Newton, LBFGS(minimize)
     public void update_mu(_Doc d, _User u, _Product i){
-        int[] iflag = {0}, iprint = {-1,3};
-        double fValue = 0.0;
+        int[] iflag = {1}, iprint = {-1,3};
+        double fValue = 1.0, lastFValue = 1.0, cvg = 1e-6, diff, iterMax = 20, iter = 0;
+        double last = 1.0;
+        double[] cur = new double[number_of_topics];
+        double stepsize = 1e-1, alpha = 0.5, beta = 0.8;
         double[] m_muG = new double[number_of_topics]; // gradient for mu
         double[] mu_diag = new double[number_of_topics];
         int N = d.getSparse().length;
@@ -360,29 +364,42 @@ public class ETBIR{
         Arrays.fill(mu_diag, 0.0);
 
         double moment, zeta_stat = 1.0 / d.m_zeta;
-        try{
-            do {
-                //update gradient of mu
-                for (int k = 0; k < number_of_topics; k++) {
-                    moment = Math.exp(d.m_mu[k] + 0.5 * d.m_Sigma[k]);
-                    m_muG[k] = -(-m_rho * (d.m_mu[k] - Utils.dotProduct(i.m_eta, u.m_nuP[k]) / Utils.sumOfArray(i.m_eta))
-                            + Utils.sumOfColumn(d.m_phi, k) - N * zeta_stat * moment);//-1 because LBFGS is minimization
-                    fValue += -0.5 * m_rho * (d.m_mu[k] * d.m_mu[k]
-                            - 2 * d.m_mu[k] * Utils.dotProduct(i.m_eta, u.m_nuP[k]) / Utils.sumOfArray(i.m_eta))
-                            + d.m_mu[k] * Utils.sumOfColumn(d.m_phi, k) - N * zeta_stat * moment;
-                }
-                fValue = -fValue; //LBFGS is about minimization
-                LBFGS.lbfgs(number_of_topics,4, d.m_mu, fValue, m_muG,false, mu_diag, iprint, 1e-6, 1e-16, iflag);
-            } while (iflag[0] != 0);
-        }catch (ExceptionWithIflag e){
-            e.printStackTrace();
-        }
+        do {
+            //update gradient of mu
+            lastFValue = fValue;
+            for (int k = 0; k < number_of_topics; k++) {
+                stepsize = 1.25;
+                moment = Math.exp(d.m_mu[k] + 0.5 * d.m_Sigma[k]);
+                m_muG[k] = -(-m_rho * (d.m_mu[k] - Utils.dotProduct(i.m_eta, u.m_nuP[k]) / Utils.sumOfArray(i.m_eta))
+                        + Utils.sumOfColumn(d.m_phi, k) - N * zeta_stat * moment);//-1 because LBFGS is minimization
+                last = - ( -0.5 * m_rho * (d.m_mu[k] * d.m_mu[k]
+                        - 2 * d.m_mu[k] * Utils.dotProduct(i.m_eta, u.m_nuP[k]) / Utils.sumOfArray(i.m_eta))
+                        + d.m_mu[k] * Utils.sumOfColumn(d.m_phi, k) - N * zeta_stat * moment);
+                do{
+                    stepsize = beta * stepsize;
+                    mu_diag[k] = d.m_mu[k] - stepsize * m_muG[k];
+                    moment = Math.exp(mu_diag[k] + 0.5 * d.m_Sigma[k]);
+                    cur[k] = - ( -0.5 * m_rho * (mu_diag[k] * mu_diag[k]
+                            - 2 * mu_diag[k] * Utils.dotProduct(i.m_eta, u.m_nuP[k]) / Utils.sumOfArray(i.m_eta))
+                            + mu_diag[k] * Utils.sumOfColumn(d.m_phi, k) - N * zeta_stat * moment);
+                    diff = cur[k] - last;
+                }while(diff > - alpha * stepsize * m_muG[k] * m_muG[k]);
+                d.m_mu[k] = mu_diag[k];
+            }
+            fValue = Utils.sumOfArray(cur);
+//                LBFGS.lbfgs(number_of_topics,4, d.m_mu, fValue, m_muG,false, mu_diag, iprint, 1e-6, 1e-16, iflag);
+            diff = Math.abs((lastFValue - fValue) / lastFValue);
+            System.out.println("-- update mu: fValue: " + fValue + "; diff: " + diff);
+        } while (iter++ < iterMax && diff > cvg);
     }
 
     //variational inference for p(\theta|\mu,\Sigma) for each document: Quasi-Newton, LBFGS
     public void update_SigmaTheta(_Doc d){
         int[] iflag = {0}, iprint = {-1,3};
-        double fValue = 0.0;
+        double fValue = 1.0, lastFValue = 1.0, cvg = 1e-6;
+        double last = 1.0;
+        double[] cur = new double[number_of_topics];
+        double stepsize = 1e-1, alpha = 0.5, beta = 0.8;
         int N = d.getSparse().length;
         double[] m_SigmaG = new double[number_of_topics]; // gradient for Sigma
         double[] sigma_diag = new double[number_of_topics];
@@ -394,21 +411,29 @@ public class ETBIR{
 //        }
 
         double moment, zeta_stat = 1.0 / d.m_zeta;
-        try{
-            do {
-                //update gradient of sigma
-                for (int k = 0; k < number_of_topics; k++) {
-                    moment = Math.exp(d.m_mu[k] + 0.5 * d.m_Sigma[k]);
-                    m_SigmaG[k] = -0.5 * (1.0 / d.m_Sigma[k] - m_rho - N * zeta_stat * moment); //-1 because LBFGS is minimization
-                    fValue += -0.5 * m_rho * d.m_Sigma[k] - N * zeta_stat * moment + 0.5 * Math.log(d.m_Sigma[k]);
-                }
-                fValue = -fValue;
-                LBFGS.lbfgs(number_of_topics,4, d.m_Sigma, fValue, m_SigmaG,false, sigma_diag, iprint, 1e-6, 1e-32, iflag);
+        do {
+            //update gradient of sigma
+            lastFValue = fValue;
+            for (int k = 0; k < number_of_topics; k++) {
+                stepsize = 1.0;
+                moment = Math.exp(d.m_mu[k] + 0.5 * d.m_Sigma[k]);
+                m_SigmaG[k] = -0.5 * (1.0 / d.m_Sigma[k] - m_rho - N * zeta_stat * moment); //-1 because LBFGS is minimization
+                last = - (-0.5 * m_rho * d.m_Sigma[k] - N * zeta_stat * moment + 0.5 * Math.log(d.m_Sigma[k]));
+                do{
+                    stepsize = beta * stepsize;
+                    sigma_diag[k] = d.m_Sigma[k] - stepsize * m_SigmaG[k];
+                    cur[k] = - (-0.5 * m_rho * sigma_diag[k] - N * zeta_stat * moment + 0.5 * Math.log(sigma_diag[k]));
+                }while(cur[k] > last - alpha * stepsize * m_SigmaG[k] * m_SigmaG[k]);
+                d.m_Sigma[k] = sigma_diag[k];
+                fValue = Utils.sumOfArray(cur);
+            }
+//            LBFGS.lbfgs(number_of_topics,4, d.m_Sigma, fValue, m_SigmaG,false, sigma_diag, iprint, 1e-6, 1e-32, iflag);
+            if(Math.abs((lastFValue - fValue)/ lastFValue ) < cvg){
+                iflag[0] = 0;
+            }
+            System.out.println("-- update sigmaTheta: fValue: " + fValue);
+        } while(iflag[0] != 0);
 
-            } while(iflag[0] != 0);
-        }catch (ExceptionWithIflag e){
-            e.printStackTrace();
-        }
     }
 
     //variational inference for p(P|\nu,\Sigma) for each user
