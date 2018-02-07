@@ -23,8 +23,35 @@ public class ETBIRMain {
         int norm = 0;//The way of normalization.(only 1 and 2)
         int lengthThreshold = 5; //Document length threshold
         String tokenModel = "./data/Model/en-token.bin";
-        String fvFile = "./data/Features/yelp_features.txt";
 
+//        /**
+//         * generate vocabulary
+//         */
+//        double startProb = 0.5; // Used in feature selection, the starting point of the features.
+//        double endProb = 0.999; // Used in feature selection, the ending point of the features.
+//        int maxDF = -1, minDF = 1; // Filter the features with DFs smaller than this threshold.
+//        String featureSelection = "DF";
+//
+//        String folder = "./myData/byItem_1/";
+//        String suffix = ".json";
+//        String stopwords = "./data/Model/stopwords.dat";
+//        String pattern = String.format("%dgram_%s", Ngram, featureSelection);
+//        String fvFile = String.format("data/Features/fv_%s_byItem_1.txt", pattern);
+//        String fvStatFile = String.format("data/Features/fv_stat_%s_byItem_1.txt", pattern);
+//        String vctFile = String.format("data/Fvs/vct_%s_byItem_1.dat", pattern);
+//
+////        /****Loading json files*****/
+//        DocAnalyzer analyzer = new DocAnalyzer(tokenModel, classNumber, null, Ngram, lengthThreshold);
+//        analyzer.LoadStopwords(stopwords);
+//        analyzer.LoadDirectory(folder, suffix); //Load all the documents as the data set.
+//
+////		/****Feature selection*****/
+//        System.out.println("Performing feature selection, wait...");
+//        analyzer.featureSelection(fvFile, featureSelection, startProb, endProb, maxDF, minDF); //Select the features.
+//        analyzer.SaveCVStat(fvStatFile);
+
+
+        String fvFile = "./data/Features/fv_1gram_DF_byItem_1.txt";
         String reviewFile = "./mydata/byItem/857_4JNXUYY8wbaaDmk3BPzlWw.json";
 
         DocAnalyzer analyzer = new DocAnalyzer(tokenModel, classNumber, fvFile, Ngram, lengthThreshold);
@@ -34,16 +61,15 @@ public class ETBIRMain {
         int vocabulary_size = corpus.getFeatureSize();
         int topic_number = 30;
 
-        int varMaxIter = 20;
+        int varMaxIter = 5;
         double varConverge = 1e-6;
-        double varStepSize = 1e-4;
 
         int emMaxIter = 20;
         double emConverge = 1e-3;
 
-        double alpha = 1.0 + 1e-2, beta = 1.0 + 1e-3, sigma = 1.0, rho = 1.0;
+        double alpha = 1 + 1e-2, beta = 1.0 + 1e-3, sigma = 1.0, rho = 1.0;
 
-        ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge, varStepSize,
+        ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge,
                 topic_number, alpha, sigma, rho, beta);
         etbirModel.loadCorpus(corpus);
         etbirModel.EM();

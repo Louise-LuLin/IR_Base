@@ -265,7 +265,7 @@ public class DocAnalyzer extends Analyzer {
 	@Override
 	public void LoadDoc(String filename) {
 		if (filename.toLowerCase().endsWith(".json"))
-			LoadJsonDoc(filename);
+			LoadReviewByItem(filename);
 		else
 			LoadTxtDoc(filename);
 	}
