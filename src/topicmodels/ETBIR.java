@@ -390,6 +390,7 @@ public class ETBIR{
         }
     }
 
+    // alternative: line search gradient descent
     public void update_mu(_Doc d, _User u, _Product i){
         int[] iflag = {1}, iprint = {-1,3};
         double fValue = 1.0, lastFValue = 1.0, cvg = 1e-6, diff, iterMax = 20, iter = 0;
@@ -474,6 +475,7 @@ public class ETBIR{
         }
     }
 
+    //alternative: line search gradient descent
     public void update_SigmaTheta(_Doc d){
         double fValue = 1.0, lastFValue = 1.0, cvg = 1e-6, diff, iterMax = 20, iter = 0;
         double last = 1.0;
