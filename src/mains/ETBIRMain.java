@@ -67,7 +67,7 @@ public class ETBIRMain {
         int emMaxIter = 20;
         double emConverge = 1e-3;
 
-        double alpha = 1 + 1e-2, beta = 1.0 + 1e-3, sigma = 1.0, rho = 1.0;
+        double alpha = 1 + 1e-2, beta = 1.0 + 1e-3, sigma = 1.0 + 1e-2, rho = 1.0 + 1e-2;
 
         ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge,
                 topic_number, alpha, sigma, rho, beta);
