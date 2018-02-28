@@ -32,13 +32,13 @@ public class ETBIRMain {
 //        int maxDF = -1, minDF = 1; // Filter the features with DFs smaller than this threshold.
 //        String featureSelection = "DF";
 //
-//        String folder = "./myData/byItem_1/";
+//        String folder = "./myData/byUser/";
 //        String suffix = ".json";
 //        String stopwords = "./data/Model/stopwords.dat";
 //        String pattern = String.format("%dgram_%s", Ngram, featureSelection);
-//        String fvFile = String.format("data/Features/fv_%s_byItem_1.txt", pattern);
-//        String fvStatFile = String.format("data/Features/fv_stat_%s_byItem_1.txt", pattern);
-//        String vctFile = String.format("data/Fvs/vct_%s_byItem_1.dat", pattern);
+//        String fvFile = String.format("data/Features/fv_%s_byUser_20.txt", pattern);
+//        String fvStatFile = String.format("data/Features/fv_stat_%s_byUser_20.txt", pattern);
+//        String vctFile = String.format("data/Fvs/vct_%s_byUser_20.dat", pattern);
 //
 ////        /****Loading json files*****/
 //        DocAnalyzer analyzer = new DocAnalyzer(tokenModel, classNumber, null, Ngram, lengthThreshold);
@@ -50,14 +50,19 @@ public class ETBIRMain {
 //        analyzer.featureSelection(fvFile, featureSelection, startProb, endProb, maxDF, minDF); //Select the features.
 //        analyzer.SaveCVStat(fvStatFile);
 
-
+        /**
+         * model training
+         */
         String fvFile = "./data/Features/fv_1gram_DF_byItem_1.txt";
-        String reviewFile = "./mydata/byItem/857_4JNXUYY8wbaaDmk3BPzlWw.json";
+        String reviewFolder = "./myData/byItem_1/";
+        String suffix = ".json";
 
         DocAnalyzer analyzer = new DocAnalyzer(tokenModel, classNumber, fvFile, Ngram, lengthThreshold);
-        analyzer.LoadReviewByItem(reviewFile);
+        analyzer.LoadDirectory(reviewFolder, suffix);
 
         _Corpus corpus = analyzer.getCorpus();
+//        corpus.save2File("./myData/byUser/top20.dat");
+
         int vocabulary_size = corpus.getFeatureSize();
         int topic_number = 30;
 
