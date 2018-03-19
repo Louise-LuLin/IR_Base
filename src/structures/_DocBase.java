@@ -123,6 +123,7 @@ public abstract class _DocBase {
 	
 	//Get the total number of tokens in a document.
 	public int getTotalDocLength(){
+		this.calcTotalLength();
 		return m_totalLength;
 	}
 	

@@ -265,7 +265,7 @@ public class DocAnalyzer extends Analyzer {
 	@Override
 	public void LoadDoc(String filename) {
 		if (filename.toLowerCase().endsWith(".json"))
-			LoadReviewByItem(filename);
+			LoadReviewYelp(filename);
 		else
 			LoadTxtDoc(filename);
 	}
@@ -315,12 +315,11 @@ public class DocAnalyzer extends Analyzer {
 	}
 
 	//defined by Lu Lin for yelp review data
-	public void LoadReviewByItem(String filename){
+	public void LoadReviewYelp(String filename){
 	    _Product prod = null;
 	    JSONArray jarray = null;
 	    try{
 	        JSONObject json = LoadJSON(filename);
-	        prod = new _Product(json.getString("ProductID"));
 	        jarray = json.getJSONArray("reviews");
         }catch (Exception e){
 	        System.err.print("!FAIL to parse a json file...");

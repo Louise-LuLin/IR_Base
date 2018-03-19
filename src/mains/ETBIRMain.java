@@ -18,19 +18,19 @@ public class ETBIRMain {
 
     public static void main(String[] args) throws IOException, ParseException {
         int classNumber = 6; //Define the number of classes in this Naive Bayes.
-        int Ngram = 1; //The default value is unigram.
+        int Ngram = 2; //The default value is unigram.
         String featureValue = "TF"; //The way of calculating the feature value, which can also be "TFIDF", "BM25"
         int norm = 0;//The way of normalization.(only 1 and 2)
         int lengthThreshold = 5; //Document length threshold
         String tokenModel = "./data/Model/en-token.bin";
 
 //        /**
-//         * generate vocabulary
+//         * generate vocabulary: too large.. ask Lin about it
 //         */
 //        double startProb = 0.5; // Used in feature selection, the starting point of the features.
 //        double endProb = 0.999; // Used in feature selection, the ending point of the features.
 //        int maxDF = -1, minDF = 1; // Filter the features with DFs smaller than this threshold.
-//        String featureSelection = "DF";
+//        String featureSelection = "IG";
 //
 //        String folder = "./myData/byUser/";
 //        String suffix = ".json";
@@ -53,15 +53,15 @@ public class ETBIRMain {
         /**
          * model training
          */
-        String fvFile = "./data/Features/fv_1gram_DF_byItem_1.txt";
-        String reviewFolder = "./myData/byItem_1/";
+        String fvFile = "./data/Features/yelp_features.txt";
+        String reviewFolder = "./myData/byUser_1/";
         String suffix = ".json";
 
         DocAnalyzer analyzer = new DocAnalyzer(tokenModel, classNumber, fvFile, Ngram, lengthThreshold);
         analyzer.LoadDirectory(reviewFolder, suffix);
 
         _Corpus corpus = analyzer.getCorpus();
-//        corpus.save2File("./myData/byUser/top20.dat");
+//        corpus.save2File("./myData/byUser/top20_byUser20.dat");
 
         int vocabulary_size = corpus.getFeatureSize();
         int topic_number = 30;
