@@ -52,14 +52,12 @@ public class ETBIR{
     public double dRho;
     public double dBeta;
 
-
-    public double[] m_eta0;
     public double[] m_etaStats;
     public double[][] m_word_topic_stats;
     public double m_pStats;
     public double m_thetaStats;
-    public double[] m_eta_p_Stats;
-    public double[] m_eta_mean_Stats;
+    public double m_eta_p_Stats;
+    public double m_eta_mean_Stats;
 
     public ETBIR(int emMaxIter, double emConverge,  int varMaxIter, double varConverge, //stop criterion
                            int nTopics, //user pre-defined arguments
@@ -147,15 +145,12 @@ public class ETBIR{
             }
 
             for(int v = 0; v < vocabulary_size; v++){
-                m_beta[k][v] = m_beta[k][v] / sum;
+                m_beta[k][v] = Math.log(m_beta[k][v]) - Math.log(sum);
             }
         }
 
-        this.m_eta0 = new double[number_of_items];
         this.m_etaStats = new double[number_of_topics];
         this.m_word_topic_stats = new double[number_of_topics][vocabulary_size];
-        this.m_eta_p_Stats = new double[number_of_items];
-        this.m_eta_mean_Stats = new double[number_of_items];
     }
 
     public void initDoc(_Doc doc){
@@ -171,7 +166,6 @@ public class ETBIR{
     }
 
     public void initUser(_User user){
-
         user.m_nuP = new double[number_of_topics][number_of_topics];
         user.m_SigmaP = new double[number_of_topics][number_of_topics][number_of_topics];
         for(int k = 0; k < number_of_topics; k++){
@@ -185,90 +179,73 @@ public class ETBIR{
     }
 
     public void initItem(_Product item){
-
         item.m_eta = new double[number_of_topics];
         Arrays.fill(item.m_eta, dAlpha);
 
     }
 
     protected void initStats(){
-        Arrays.fill(m_eta0, 0.0);
         Arrays.fill(m_etaStats, 0.0);
         for(int k = 0; k < number_of_topics; k++){
             Arrays.fill(m_word_topic_stats[k], 0);
         }
         m_pStats = 0.0;
         m_thetaStats = 0.0;
-        Arrays.fill(m_eta_p_Stats, 0.0);
-        Arrays.fill(m_eta_mean_Stats, 0.0);
+        m_eta_p_Stats = 0.0;
+        m_eta_mean_Stats = 0.0;
     }
 
-    protected void updateStats(_Doc review){
-        // update m_eta0 for most parameters regarding eta
-        for(int i = 0; i < number_of_items; i++){
-            m_eta0[i] = Utils.sumOfArray(m_items[i].m_eta);
+    protected void updateStatsForItem(_Product item){
+        for(int k = 0; k < number_of_topics;k++){
+            m_etaStats[k] += Utils.digamma(item.m_eta[k]) - Utils.digamma(Utils.sumOfArray(item.m_eta));
         }
+    }
 
-        // update m_etaStats for updating alpha
-        for(int i = 0; i < number_of_items; i++){
-            for(int k = 0; k < number_of_topics;k++){
-                m_etaStats[k] += Utils.digamma(m_items[i].m_eta[k]) - Utils.digamma(m_eta0[i]);
+    protected void updateStatsForUser(_User user){
+        for(int k = 0; k < number_of_topics; k++){
+            for(int l = 0; l < number_of_topics; l++){
+                m_pStats += user.m_SigmaP[k][l][l] + user.m_nuP[k][l] * user.m_nuP[k][l];
             }
         }
+    }
 
+    protected void updateStatsForDoc(_Doc doc){
         // update m_word_topic_stats for updating beta
-        _SparseFeature[] fv = review.getSparse();
-        for(int d = 0; d < number_of_items; d++){
-            for(int k = 0; k < number_of_topics; k++){
-                for(int n = 0; n < fv.length; n++){
-                    int wid = fv[n].getIndex();
-                    double v = fv[n].getValue();
-                    m_word_topic_stats[k][n] += v * review.m_phi[n][k];
-                }
-            }
-        }
-
-        // update m_pStates for updating sigma
-        for(int u = 0; u < number_of_users; u++){
-            for(int k = 0; k < number_of_topics; k++){
-                for(int l = 0; l < number_of_topics; l++){
-                    m_pStats += m_users[u].m_SigmaP[k][l][l] + m_users[u].m_nuP[k][l] * m_users[u].m_nuP[k][l];
-                }
+        _SparseFeature[] fv = doc.getSparse();
+        for(int k = 0; k < number_of_topics; k++){
+            for(int n = 0; n < fv.length; n++){
+                int wid = fv[n].getIndex();
+                double v = fv[n].getValue();
+                m_word_topic_stats[k][wid] += v * doc.m_phi[n][k];
             }
         }
 
         // update m_thetaStats for updating rho
-        for(int d = 0; d < m_corpus.getSize(); d++){
-            _Doc doc = m_corpus.getCollection().get(d);
-            for(int k = 0; k < number_of_topics; k++){
-                m_thetaStats += doc.m_Sigma[k] + doc.m_mu[k] * doc.m_mu[k];
-            }
+        for(int k = 0; k < number_of_topics; k++){
+            m_thetaStats += doc.m_Sigma[k] + doc.m_mu[k] * doc.m_mu[k];
         }
 
-        // update m_eta_p_stats for updating rho and eta
-        // update m_eta_mean_stats for updating rho and eta
-        for(int i = 0; i < number_of_items; i++) {
-            for (int u = 0; u < number_of_users; u++) {
-                String dKey = i + "_" + u;
-                _Doc currentD = m_corpus.getCollection().get(m_reviewIndex.get(dKey));
-                for (int k = 0; k < number_of_topics; k++) {
-                    for (int l = 0; l < number_of_topics; l++) {
-                        m_eta_mean_Stats[i] += m_items[i].m_eta[l] * m_users[u].m_nuP[l][k] * currentD.m_mu[k];
+        // update m_eta_p_stats for updating rho
+        // update m_eta_mean_stats for updating rho
+        _Product item = m_items[m_itemsIndex.get(doc.getItemID())];
+        _User user = m_users[m_usersIndex.get(doc.getTitle())];
+        for (int k = 0; k < number_of_topics; k++) {
+            for (int l = 0; l < number_of_topics; l++) {
+                m_eta_mean_Stats += item.m_eta[l] * user.m_nuP[k][l] * doc.m_mu[k];
 
-                        for (int j = 0; j < number_of_topics; j++) {
-                            double term1 = m_users[u].m_SigmaP[k][l][j] + m_users[u].m_nuP[k][l] * m_users[u].m_nuP[k][j];
-                            m_eta_p_Stats[i] += m_items[i].m_eta[l] * m_items[i].m_eta[j] * term1;
-                            if (j == l) {
-                                term1 = m_users[u].m_SigmaP[k][l][j] + m_users[u].m_nuP[k][l] * m_users[u].m_nuP[k][j];
-                                m_eta_p_Stats[i] += m_items[i].m_eta[l] * term1;
-                            }
-                        }
+                for (int j = 0; j < number_of_topics; j++) {
+                    double term1 = user.m_SigmaP[k][l][j] + user.m_nuP[k][l] * user.m_nuP[k][j];
+                    m_eta_p_Stats += item.m_eta[l] * item.m_eta[j] * term1;
+                    if (j == l) {
+                        term1 = user.m_SigmaP[k][l][j] + user.m_nuP[k][l] * user.m_nuP[k][j];
+                        m_eta_p_Stats += item.m_eta[l] * term1;
                     }
                 }
             }
-            m_eta_mean_Stats[i] /= m_eta0[i];
-            m_eta_p_Stats[i] /= m_eta0[i] * (m_eta0[i] + 1.0);
         }
+        double eta0 = Utils.sumOfArray(item.m_eta);
+        m_eta_mean_Stats /= eta0;
+        m_eta_p_Stats /= eta0 * (eta0 + 1.0);
     }
 
     protected double E_step(){
@@ -292,7 +269,7 @@ public class ETBIR{
                 }
                 totalLikelihood += cur;
                 System.out.println("currentVarInference: " + cur + "; totalLikelihood: " + totalLikelihood);
-                updateStats(doc);
+                updateStatsForDoc(doc);
             }
 
             for (int i = 0; i < m_users.length; i++) {
@@ -305,6 +282,7 @@ public class ETBIR{
                     continue;
                 }
                 totalLikelihood += cur;
+                updateStatsForUser(user);
             }
 
             for (int i = 0; i < m_items.length; i++) {
@@ -317,6 +295,7 @@ public class ETBIR{
                     continue;
                 }
                 totalLikelihood += cur;
+                updateStatsForItem(item);
             }
 
             if(iter > 0) {
@@ -406,7 +385,7 @@ public class ETBIR{
             wid = fv[n].getIndex();
             v = fv[n].getValue();
             for (int k = 0; k < number_of_topics; k++) {
-                d.m_phi[n][k] = Math.log(m_beta[k][wid]) + d.m_mu[k];
+                d.m_phi[n][k] = m_beta[k][wid] + d.m_mu[k];
             }
             // normalize
             logSum = Utils.logSum(d.m_phi[n]);
@@ -1031,14 +1010,9 @@ public class ETBIR{
         }
     }
 
-
-
     public void M_step() {
         //maximize likelihood for \rho of p(\theta|P\gamma, \rho)
-        double term1 = m_thetaStats;
-        double term2 = Utils.sumOfArray(m_eta_p_Stats);
-        double term3 = Utils.sumOfArray(m_eta_mean_Stats) * 2;
-        m_rho = number_of_topics / (term1 + term2 - term3);
+        m_rho = number_of_topics / (m_thetaStats + m_eta_p_Stats - 2 * m_eta_mean_Stats);
 
         //maximize likelihood for \sigma
         m_sigma = number_of_topics / m_pStats;
@@ -1047,7 +1021,8 @@ public class ETBIR{
         for(int k = 0 ;k < number_of_topics; k++){
             double sum = Utils.sumOfArray(m_word_topic_stats[k]);
             for(int v = 0; v < vocabulary_size; v++){
-                m_beta[k][v] = m_word_topic_stats[k][v] / sum;
+                m_beta[k][v] = Math.log(m_word_topic_stats[k][v]) - Math.log(sum);
+//                m_beta[k][v] = m_word_topic_stats[k][v] / sum;
             }
         }
 
@@ -1062,7 +1037,7 @@ public class ETBIR{
             c1 = 0; c2 = 0;
             for(int k = 0; k < number_of_topics; k++){
                 m_alphaG[k] = number_of_items * (diAlphaSum - Utils.digamma(m_alpha[k])) + m_etaStats[k];
-                m_alphaG[k] = - number_of_items * Utils.trigamma(m_alpha[k]);
+                m_alphaH[k] = - number_of_items * Utils.trigamma(m_alpha[k]);
 
                 c1 += m_alphaG[k] / m_alphaH[k];
                 c2 += 1.0 / m_alphaH[k];
@@ -1162,7 +1137,7 @@ public class ETBIR{
                 v = fv[n].getValue();
                 term1 += v * doc.m_phi[n][k] * doc.m_mu[k];
                 term3 += v * doc.m_phi[n][k] * Math.log(doc.m_phi[n][k]);
-                part5 += v * doc.m_phi[n][k] * Math.log(m_beta[k][wid]);
+                part5 += v * doc.m_phi[n][k] * m_beta[k][wid];
             }
             term2 += Math.exp(doc.m_mu[k] + doc.m_Sigma[k]/2.0);
         }
