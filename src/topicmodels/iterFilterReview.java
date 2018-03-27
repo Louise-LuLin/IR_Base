@@ -228,6 +228,85 @@ public class iterFilterReview {
         }
     }
 
+    public void clusterDataByUser(String inFileName, String outFileName){
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(inFileName), "UTF-8"));
+            StringBuffer buffer = new StringBuffer(1024);
+            String line;
+            HashMap<String, Integer> userMap = new HashMap<String, Integer>();
+
+            //sort item by review count
+            while ((line = reader.readLine()) != null) {
+                JSONObject obj = new JSONObject(line.toString());
+
+                if(obj.has("review_id")) {
+                    String userID = obj.getString("user_id");
+                    userMap.put(userID, 0);
+                }
+            }
+            reader.close();
+            System.out.println("load " + userMap.size() + " users.");
+
+            reader = new BufferedReader(new InputStreamReader(new FileInputStream(inFileName), "UTF-8"));
+            buffer = new StringBuffer(1024);
+            while((line = reader.readLine()) != null){
+                JSONObject obj = new JSONObject(line.toString());
+
+                if(obj.has("review_id")){
+                    String userID = obj.getString("user_id");
+                    userMap.put(userID, userMap.get(userID)+1);
+                }
+            }
+            reader.close();
+
+            Object[] temp = userMap.entrySet().toArray();
+            Arrays.sort(temp, new Comparator() {
+                public int compare(Object o1, Object o2) {
+                    return ((Map.Entry<String, Integer>) o2).getValue()
+                            .compareTo(((Map.Entry<String, Integer>) o1).getValue());
+                }
+            });
+
+            for (int i = 0; i < temp.length; i++) {
+                Object user = temp[i];
+                String userID = ((Map.Entry<String, Integer>) user).getKey();
+                int reviewCount = ((Map.Entry<String, Integer>) user).getValue();
+                if(reviewCount > 50){
+                    continue;
+                }
+
+                FileWriter file = new FileWriter(outFileName + reviewCount + "_" + userID + ".json");
+
+                reader = new BufferedReader(new InputStreamReader(new FileInputStream(inFileName), "UTF-8"));
+                buffer = new StringBuffer(1024);
+                JSONArray jarry = new JSONArray();
+                while((line = reader.readLine()) != null){
+                    JSONObject obj = new JSONObject(line.toString());
+
+                    if(obj.has("review_id")){
+                        String iID = obj.getString("user_id");
+
+                        if(iID.equals(userID)){
+                            jarry.put(obj);
+                        }
+                    }
+                }
+                JSONObject thisItem = new JSONObject();
+                thisItem.put("userID", userID);
+                thisItem.put("reviews", jarry);
+                file.write(thisItem.toString());
+                file.flush();
+                file.close();
+                System.out.println(i + " user has: " + reviewCount + "reviews.");
+                break;
+            }
+
+
+        }catch(Exception e) {
+            System.err.println("! FAIL to load review json file or open new file...");//fail to parse a json document
+        }
+    }
+
     public static void main(String[] args) throws FileNotFoundException {
 
         int userMinCount = 20;
@@ -244,7 +323,7 @@ public class iterFilterReview {
 //                userMinCount, itemMinCount, filtIterNum);
 //        preprocessor.saveFilterdData(reviewFileName, denseFileName);
 
-        preprocessor.clusterDataByItem(denseFileName, "./myData/byItem/");
+        preprocessor.clusterDataByUser(denseFileName, "./myData/byUser/");
 //        etbirModel.readData(dataFileName);
 //        etbirModel.readVocabulary(vocFileName);
 //        etbirModel.EM();

@@ -9,6 +9,10 @@ import java.util.ArrayList;
 import structures._Corpus;
 import structures._Review;
 import topicmodels.ETBIR;
+import topicmodels.LDA.LDA_Gibbs;
+import topicmodels.multithreads.LDA.LDA_Variational_multithread;
+import topicmodels.multithreads.pLSA.pLSA_multithread;
+import topicmodels.pLSA.pLSA;
 
 
 /**
@@ -27,9 +31,9 @@ public class ETBIRMain {
 //        /**
 //         * generate vocabulary: too large.. ask Lin about it
 //         */
-//        double startProb = 0.5; // Used in feature selection, the starting point of the features.
+//        double startProb = 0.1; // Used in feature selection, the starting point of the features.
 //        double endProb = 0.999; // Used in feature selection, the ending point of the features.
-//        int maxDF = -1, minDF = 1; // Filter the features with DFs smaller than this threshold.
+//        int maxDF = -1, minDF = 10; // Filter the features with DFs smaller than this threshold.
 //        String featureSelection = "IG";
 //
 //        String folder = "./myData/byUser/";
@@ -53,7 +57,7 @@ public class ETBIRMain {
         /**
          * model training
          */
-        String fvFile = "./data/Features/yelp_features.txt";
+        String fvFile = "./data/Features/fv_2gram_IG_byUser_20.txt";
         String reviewFolder = "./myData/byUser_1/";
         String suffix = ".json";
 
@@ -72,11 +76,41 @@ public class ETBIRMain {
         int emMaxIter = 20;
         double emConverge = 1e-3;
 
-        double alpha = 1 + 1e-2, beta = 1.0 + 1e-3, sigma = 1.0 + 1e-2, rho = 1.0 + 1e-2;
+        double alpha = 1.0 + 1e-2, beta = 1.0 + 1e-3, eta = 5.0;//these two parameters must be larger than 1!!!
+        double  sigma = 1.0 + 1e-2, rho = 1.0 + 1e-2;
 
+        // LDA
+//        /*****parameters for the two-topic topic model*****/
+//        String topicmodel = "LDA_Variational"; // pLSA, LDA_Gibbs, LDA_Variational
+//
+//        int number_of_topics = 15;
+//        double converge = -1, lambda = 0.7; // negative converge means do need to check likelihood convergency
+//        int number_of_iteration = 100;
+//        boolean aspectSentiPrior = true;
+//        pLSA tModel = null;
+//        if (topicmodel.equals("pLSA")) {
+//            tModel = new pLSA_multithread(number_of_iteration, converge, beta, corpus,
+//                    lambda, number_of_topics, alpha);
+//        } else if (topicmodel.equals("LDA_Gibbs")) {
+//            tModel = new LDA_Gibbs(number_of_iteration, converge, beta, corpus,
+//                    lambda, number_of_topics, alpha, 0.4, 50);
+//        }  else if (topicmodel.equals("LDA_Variational")) {
+//            tModel = new LDA_Variational_multithread(number_of_iteration, converge, beta, corpus,
+//                    lambda, number_of_topics, alpha, 10, -1);
+//        } else {
+//            System.out.println("The selected topic model has not developed yet!");
+//            return;
+//        }
+//
+//        tModel.setDisplayLap(0);
+//        tModel.setInforWriter(reviewFolder + topicmodel + "_info.txt");
+//        tModel.EMonCorpus();
+//        tModel.printTopWords(50, reviewFolder + topicmodel + "_topWords.txt");
+
+        // my model
         ETBIR etbirModel = new ETBIR(emMaxIter, emConverge, varMaxIter, varConverge,
-                topic_number, alpha, sigma, rho, beta);
-        etbirModel.loadCorpus(corpus);
+                topic_number, corpus, alpha, sigma, rho, beta);
+        etbirModel.loadCorpus();
         etbirModel.EM();
     }
 }
